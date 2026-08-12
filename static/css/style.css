@@ -479,6 +479,13 @@ h1, h2, h3 {
   width: 100%;
   overflow-x: auto;
   padding-bottom: 4px;
+  scrollbar-width: none; 
+  -ms-overflow-style: none; 
+}
+
+
+.activity-grid::-webkit-scrollbar {
+  display: none;
 }
 
 .activity-cell {
