@@ -60,6 +60,9 @@ def migrate_db():
         if "pinned" not in cols:
             conn.execute("ALTER TABLE subjects ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
             conn.commit()
+        if "sort_order" not in cols:
+            conn.execute("ALTER TABLE subjects ADD COLUMN sort_order INTEGER DEFAULT 0")
+            conn.commit()    
 
         resource_cols = [r[1] for r in conn.execute("PRAGMA table_info(resources)").fetchall()]
         if "subject_id" not in resource_cols:
@@ -357,7 +360,7 @@ def create_category():
 def get_subjects():
     db = get_db()
     rows = db.execute(
-        """SELECT s.*, c.name AS category_name
+       ORDER BY s.pinned DESC, s.sort_order, s.created_at DESC"""
            FROM subjects s JOIN categories c ON s.category_id = c.id
            WHERE s.user_id = ?
            ORDER BY s.pinned DESC, s.created_at DESC""",
@@ -384,7 +387,6 @@ def toggle_pin(subject_id):
     db.execute("UPDATE subjects SET pinned = ? WHERE id = ?", (new_val, subject_id))
     db.commit()
     return jsonify({"pinned": bool(new_val)})
-
 
 @app.route("/api/subjects", methods=["POST"])
 def create_subject():
