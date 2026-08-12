@@ -171,13 +171,14 @@ def init_schema():
     """Creates all tables if they don't exist yet. Safe to call every time
     the app starts."""
     app_dir = os.path.dirname(os.path.abspath(__file__))
-   if USING_POSTGRES:
+    if USING_POSTGRES:
         schema_path = os.path.join(app_dir, "schema_postgres.sql")
         raw = psycopg2.connect(DATABASE_URL)
         with raw:
             with raw.cursor() as cur:
                 cur.execute(open(schema_path).read())
                 cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0")
+                cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS is_flat INTEGER NOT NULL DEFAULT 0")
         raw.close()
     else:
         from app import DB_PATH, migrate_db
