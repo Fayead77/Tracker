@@ -30,6 +30,7 @@ CREATE TABLE subjects (
     level1_label TEXT NOT NULL DEFAULT 'Milestone',
     level2_label TEXT NOT NULL DEFAULT 'Module',
     pinned INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
