@@ -499,23 +499,31 @@ def update_subject(subject_id):
 # ---------------------------------------------------------------------------
 def parse_bulk_text(text):
     """
-    Non-indented line -> new Level1 item.
-    Line indented with 2+ spaces or a tab -> Level2 item under current Level1.
-    Blank lines ignored.
+    Indentation is relative, not absolute — the least-indented lines
+    in the pasted text become Level1, anything indented more than that
+    becomes Level2 under the current Level1. This way it still works
+    even if every line in a paste carries the same incidental leading
+    whitespace (common when copying from PDFs/docs).
     """
+    lines = [l for l in text.split("\n") if l.strip()]
+    if not lines:
+        return []
+
+    def leading_ws(line):
+        return len(line) - len(line.lstrip(" \t"))
+
+    base_indent = min(leading_ws(l) for l in lines)
+
     structure = []
     current = None
-    for raw_line in text.split("\n"):
-        if not raw_line.strip():
-            continue
-        is_indented = raw_line.startswith("  ") or raw_line.startswith("\t")
+    for raw_line in lines:
+        indent = leading_ws(raw_line)
         name = raw_line.strip()
-        if not is_indented:
+        if indent <= base_indent:
             current = {"name": name, "level2_items": []}
             structure.append(current)
         else:
             if current is None:
-                # Orphan indented line before any level1 — treat as level1 instead
                 current = {"name": name, "level2_items": []}
                 structure.append(current)
             else:
