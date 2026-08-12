@@ -290,7 +290,7 @@ async function renderDashboard() {
 function subjectCardHTML(s) {
   const lastStudiedText = s.last_studied ? `Last studied ${s.last_studied}` : "Not started yet";
   return `
-    <div class="subject-card" data-id="${s.id}">
+   <div class="subject-card" data-id="${s.id}" draggable="true">
       <div class="subject-card-top">
         <span class="subject-card-name">${escapeHtml(s.name)}</span>
         <div style="display:flex; align-items:center; gap:6px;">
@@ -390,6 +390,52 @@ async function renderLearningList() {
   });
   wirePinButtons(groupsEl);
   wireDeleteSubjectButtons(groupsEl);
+  wireDragReorder(groupsEl);
+}
+
+function getDragAfterElement(container, y) {
+  const cards = [...container.querySelectorAll(".subject-card:not(.is-dragging)")];
+  return cards.reduce(
+    (closest, card) => {
+      const box = card.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset, element: card };
+      }
+      return closest;
+    },
+    { offset: Number.NEGATIVE_INFINITY }
+  ).element;
+}
+
+function wireDragReorder(container) {
+  container.querySelectorAll(".subject-list").forEach((list) => {
+    let dragged = null;
+
+    list.querySelectorAll(".subject-card").forEach((card) => {
+      card.addEventListener("dragstart", () => {
+        dragged = card;
+        card.classList.add("is-dragging");
+      });
+      card.addEventListener("dragend", () => {
+        card.classList.remove("is-dragging");
+        dragged = null;
+      });
+    });
+
+    list.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      if (!dragged) return;
+      const afterEl = getDragAfterElement(list, e.clientY);
+      if (afterEl == null) list.appendChild(dragged);
+      else list.insertBefore(dragged, afterEl);
+    });
+
+    list.addEventListener("drop", async () => {
+      const ids = Array.from(list.querySelectorAll(".subject-card")).map((c) => parseInt(c.dataset.id));
+      await post("/api/subjects/reorder", { order: ids });
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
