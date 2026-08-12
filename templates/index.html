@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LearnFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset_url('css/style.css') }}">
+</head>
+<body>
+
+<div class="app-shell" id="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">LF</div>
+      <div class="brand-text">
+        <div class="brand-name">LearnFlow</div>
+        <div class="brand-sub">learning, tracked</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item is-active" data-view="dashboard">
+        <span class="nav-icon">&#9635;</span> Dashboard
+      </button>
+      <button class="nav-item" data-view="learning">
+        <span class="nav-icon">&#9776;</span> My Learning
+      </button>
+      <button class="nav-item" data-view="analytics">
+        <span class="nav-icon">&#9776;</span> Analytics
+      </button>
+      <button class="nav-item" data-view="resources">
+        <span class="nav-icon">&#128279;</span> Resources
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="streak-chip" id="sidebar-streak">
+        <span class="streak-flame">&#9679;</span>
+        <span id="sidebar-streak-count">0</span> day streak
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- DASHBOARD VIEW -->
+    <section class="view" id="view-dashboard">
+      <header class="view-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p class="view-sub">Where your learning stands today</p>
+        </div>
+      </header>
+
+      <div class="stat-grid" id="dashboard-stats"></div>
+
+      <div id="continue-learning-card" class="continue-card" style="display:none;"></div>
+
+      <div class="dash-columns">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Active subjects</h2>
+          </div>
+          <div id="dashboard-subjects" class="subject-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Activity</h2>
+            <span class="panel-sub" id="streak-summary"></span>
+          </div>
+          <div id="activity-grid" class="activity-grid"></div>
+
+          <div class="panel-head panel-head-tight">
+            <h2>Flagged for review</h2>
+          </div>
+          <div id="flagged-items" class="badge-list"></div>
+
+          <div class="panel-head panel-head-tight">
+            <h2>Recent badges</h2>
+          </div>
+          <div id="recent-badges" class="badge-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MY LEARNING VIEW (list) -->
+    <section class="view" id="view-learning">
+      <header class="view-header">
+        <div>
+          <h1>My Learning</h1>
+          <p class="view-sub">Every subject you're building</p>
+        </div>
+        <button class="btn btn-primary" id="btn-add-subject">+ Add subject</button>
+      </header>
+
+      <div class="search-bar">
+        <span class="search-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </span>
+        <input type="text" id="search-input" class="input search-input" placeholder="Search subjects, milestones, modules...">
+      </div>
+      <div id="search-results" class="search-results" style="display:none;"></div>
+
+      <div id="learning-empty" class="empty-state" style="display:none;">
+        <p>No subjects yet.</p>
+        <button class="btn btn-primary" id="btn-add-subject-empty">+ Add your first subject</button>
+      </div>
+
+      <div id="category-groups"></div>
+    </section>
+
+    <!-- SUBJECT DETAIL VIEW -->
+    <section class="view" id="view-subject">
+      <header class="view-header">
+        <div>
+          <button class="btn-link" id="btn-back-learning">&larr; My Learning</button>
+          <h1><span id="subject-detail-name">Subject</span> <button class="icon-btn" id="btn-edit-subject" title="Edit name / labels">&#9998;</button></h1>
+          <p class="view-sub" id="subject-detail-sub"></p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-ghost" id="btn-bulk-import">Bulk import</button>
+          <button class="btn btn-primary" id="btn-add-level1">+ Add <span id="level1-label-inline">item</span></button>
+        </div>
+      </header>
+
+      <div class="subject-progress-bar">
+        <div class="subject-progress-fill" id="subject-progress-fill"></div>
+      </div>
+      <p class="subject-progress-text" id="subject-progress-text"></p>
+
+      <div id="level1-list" class="level1-list"></div>
+    </section>
+
+    <!-- ANALYTICS VIEW -->
+    <section class="view" id="view-analytics">
+      <header class="view-header">
+        <div>
+          <h1>Analytics</h1>
+          <p class="view-sub">Patterns behind the progress</p>
+        </div>
+      </header>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Completions — last 30 days</h2></div>
+        <div id="daily-chart" class="bar-chart"></div>
+      </div>
+
+      <div class="dash-columns">
+        <div class="panel">
+          <div class="panel-head"><h2>By subject</h2></div>
+          <div id="subject-breakdown" class="breakdown-list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>By category</h2></div>
+          <div id="category-breakdown" class="breakdown-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESOURCES VIEW -->
+    <section class="view" id="view-resources">
+      <header class="view-header">
+        <div>
+          <h1>Resources</h1>
+          <p class="view-sub">Links and material you've attached to your learning</p>
+        </div>
+      </header>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Add a resource</h2></div>
+        <label class="field-label">Subject</label>
+        <select id="resource-subject-select" class="input"></select>
+        <div class="resource-add-row" style="margin-top:12px;">
+          <select id="resource-page-type" class="input input-sm">
+            <option value="link">Link</option>
+            <option value="video">Video</option>
+            <option value="article">Article</option>
+            <option value="pdf">PDF</option>
+            <option value="website">Website</option>
+            <option value="image">Image URL</option>
+            <option value="note">Reference</option>
+          </select>
+          <input type="text" id="resource-page-value" class="input" placeholder="https://... or a reference note">
+          <button class="btn btn-primary" id="btn-add-resource-page">Add</button>
+        </div>
+        <p class="field-hint">This attaches to the subject generally. To attach a resource to one specific item, open that item inside the subject instead.</p>
+      </div>
+
+      <div id="resources-empty" class="empty-state" style="display:none;">
+        <p>No resources added yet. Attach links or notes to any item inside a subject.</p>
+      </div>
+      <div id="resources-list" class="resource-list"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- MODAL: Add Subject -->
+<div class="modal-overlay" id="modal-add-subject">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Add subject</h3>
+      <button class="modal-close" data-close-modal>&times;</button>
+    </div>
+    <div class="modal-body">
+      <label class="field-label">Subject name</label>
+      <input type="text" id="input-subject-name" placeholder="e.g. Web Development" class="input">
+
+      <label class="field-label">Category</label>
+      <select id="select-category" class="input"></select>
+      <button class="btn-link" id="btn-new-category-toggle" type="button">+ New category</button>
+      <input type="text" id="input-new-category" placeholder="e.g. Career" class="input" style="display:none; margin-top:8px;">
+
+      <div class="field-row">
+        <div>
+          <label class="field-label">Level 1 label</label>
+          <input type="text" id="input-level1-label" placeholder="Milestone, Chapter, Unit..." class="input" value="Milestone">
+          <p class="field-hint">What do you call the top-level sections?</p>
+        </div>
+        <div>
+          <label class="field-label">Level 2 label</label>
+          <input type="text" id="input-level2-label" placeholder="Module, Topic, Lesson..." class="input" value="Module">
+          <p class="field-hint">What do you call items you check off?</p>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="btn-submit-subject">Create subject</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Level1 -->
+<div class="modal-overlay" id="modal-add-level1">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h3 id="modal-add-level1-title">Add item</h3>
+      <button class="modal-close" data-close-modal>&times;</button>
+    </div>
+    <div class="modal-body">
+      <label class="field-label" id="level1-name-label">Name</label>
+      <input type="text" id="input-level1-name" class="input" placeholder="e.g. Milestone 1: HTML Basics">
+      <button class="btn btn-primary btn-block" id="btn-submit-level1">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Level2 -->
+<div class="modal-overlay" id="modal-add-level2">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h3 id="modal-add-level2-title">Add item</h3>
+      <button class="modal-close" data-close-modal>&times;</button>
+    </div>
+    <div class="modal-body">
+      <label class="field-label" id="level2-name-label">Name</label>
+      <input type="text" id="input-level2-name" class="input" placeholder="e.g. Intro to HTML">
+      <button class="btn btn-primary btn-block" id="btn-submit-level2">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Bulk Import -->
+<div class="modal-overlay" id="modal-bulk-import">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Bulk import syllabus</h3>
+      <button class="modal-close" data-close-modal>&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="field-hint">Paste your syllabus. Lines with no indent become a new item; lines indented with a tab or 2 spaces become items underneath.</p>
+      <textarea id="bulk-text" class="textarea" rows="10" placeholder="Milestone 1: HTML Basics
+  Intro to HTML
+  Tags and Elements
+Milestone 2: CSS Fundamentals
+  Selectors
+  Flexbox"></textarea>
+      <button class="btn btn-ghost btn-block" id="btn-bulk-preview">Preview</button>
+      <div id="bulk-preview" class="bulk-preview"></div>
+      <button class="btn btn-primary btn-block" id="btn-bulk-confirm" style="display:none;">Confirm import</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Notes / Resources for a level2 item -->
+<div class="modal-overlay" id="modal-item-detail">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="item-detail-name">Item</h3>
+      <button class="modal-close" data-close-modal>&times;</button>
+    </div>
+    <div class="modal-body">
+      <label class="field-label">Notes</label>
+      <textarea id="item-notes" class="textarea" rows="4" placeholder="Write anything worth remembering..."></textarea>
+      <button class="btn btn-ghost" id="btn-save-notes">Save notes</button>
+
+      <label class="field-label" style="margin-top:20px;">Resources</label>
+      <div id="item-resources-list" class="item-resources"></div>
+      <div class="resource-add-row">
+        <select id="resource-type" class="input input-sm">
+          <option value="link">Link</option>
+          <option value="video">Video</option>
+          <option value="article">Article</option>
+          <option value="pdf">PDF</option>
+          <option value="website">Website</option>
+          <option value="image">Image URL</option>
+          <option value="note">Reference</option>
+        </select>
+        <input type="text" id="resource-value" class="input" placeholder="https://...">
+        <button class="btn btn-ghost" id="btn-add-resource">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="badge-toast">
+  <span class="toast-icon">&#127942;</span>
+  <span id="toast-text"></span>
+</div>
+
+<!-- MODAL: Generic confirm (replaces browser confirm()) -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h3 id="confirm-title">Are you sure?</h3>
+      <button class="modal-close" id="confirm-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-message" style="font-size:13.5px; color:var(--text); margin:0;"></p>
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="btn btn-ghost" id="btn-confirm-cancel" style="flex:1;">Cancel</button>
+        <button class="btn" id="btn-confirm-ok" style="flex:1; background:linear-gradient(135deg, var(--warn), #C23E44); color:white;">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Generic prompt (replaces browser prompt()) -->
+<div class="modal-overlay" id="modal-prompt">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h3 id="prompt-title">Edit</h3>
+      <button class="modal-close" id="prompt-close">&times;</button>
+    </div>
+    <div class="modal-body" id="prompt-fields-container"></div>
+    <div class="modal-body" style="padding-top:0;">
+      <button class="btn btn-primary btn-block" id="btn-prompt-ok">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ asset_url('js/script.js') }}"></script>
+</body>
+</html>

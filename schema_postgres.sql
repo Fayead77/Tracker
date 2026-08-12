@@ -1,0 +1,66 @@
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+);
+
+CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    UNIQUE(user_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS subjects (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    level1_label TEXT NOT NULL DEFAULT 'Milestone',
+    level2_label TEXT NOT NULL DEFAULT 'Module',
+    pinned INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+);
+
+CREATE TABLE IF NOT EXISTS level1 (
+    id SERIAL PRIMARY KEY,
+    subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS level2 (
+    id SERIAL PRIMARY KEY,
+    level1_id INTEGER NOT NULL REFERENCES level1(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    done INTEGER NOT NULL DEFAULT 0,
+    notes TEXT DEFAULT '',
+    sort_order INTEGER DEFAULT 0,
+    completed_at TEXT,
+    flagged INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS resources (
+    id SERIAL PRIMARY KEY,
+    subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    level2_id INTEGER REFERENCES level2(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS activity_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    level2_id INTEGER NOT NULL REFERENCES level2(id) ON DELETE CASCADE,
+    subject_id INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS badges (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    level1_id INTEGER NOT NULL REFERENCES level1(id) ON DELETE CASCADE,
+    earned_date TEXT NOT NULL
+);
