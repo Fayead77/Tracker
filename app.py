@@ -62,7 +62,10 @@ def migrate_db():
             conn.commit()
         if "sort_order" not in cols:
             conn.execute("ALTER TABLE subjects ADD COLUMN sort_order INTEGER DEFAULT 0")
-            conn.commit()    
+            conn.commit()
+        if "is_flat" not in cols:
+            conn.execute("ALTER TABLE subjects ADD COLUMN is_flat INTEGER NOT NULL DEFAULT 0")
+            conn.commit()
 
         resource_cols = [r[1] for r in conn.execute("PRAGMA table_info(resources)").fetchall()]
         if "subject_id" not in resource_cols:
@@ -360,10 +363,10 @@ def create_category():
 def get_subjects():
     db = get_db()
     rows = db.execute(
-       ORDER BY s.pinned DESC, s.sort_order, s.created_at DESC"""
+        """SELECT s.*, c.name AS category_name
            FROM subjects s JOIN categories c ON s.category_id = c.id
            WHERE s.user_id = ?
-           ORDER BY s.pinned DESC, s.created_at DESC""",
+           ORDER BY s.pinned DESC, s.sort_order, s.created_at DESC""",
         (current_user_id(),),
     ).fetchall()
     result = []
@@ -388,11 +391,28 @@ def toggle_pin(subject_id):
     db.commit()
     return jsonify({"pinned": bool(new_val)})
 
+
+@app.route("/api/subjects/reorder", methods=["POST"])
+def reorder_subjects():
+    data = request.get_json(force=True)
+    order = data.get("order", [])
+    db = get_db()
+    uid = current_user_id()
+    for i, subject_id in enumerate(order):
+        db.execute(
+            "UPDATE subjects SET sort_order = ? WHERE id = ? AND user_id = ?",
+            (i, subject_id, uid),
+        )
+    db.commit()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/subjects", methods=["POST"])
 def create_subject():
     data = request.get_json(force=True)
     name = (data.get("name") or "").strip()
     category_id = data.get("category_id")
+    is_flat = bool(data.get("is_flat"))
     level1_label = (data.get("level1_label") or "Milestone").strip()
     level2_label = (data.get("level2_label") or "Module").strip()
     if not name or not category_id:
@@ -405,17 +425,27 @@ def create_subject():
     if not owned_cat:
         return jsonify({"error": "Category not found"}), 404
     cur = db.execute(
-        "INSERT INTO subjects (user_id, name, category_id, level1_label, level2_label) VALUES (?, ?, ?, ?, ?)",
-        (uid, name, category_id, level1_label, level2_label),
+        "INSERT INTO subjects (user_id, name, category_id, level1_label, level2_label, is_flat) VALUES (?, ?, ?, ?, ?, ?)",
+        (uid, name, category_id, level1_label, level2_label, int(is_flat)),
     )
     db.commit()
+    subject_id = cur.lastrowid
+    if is_flat:
+        # Flat subjects always have exactly one hidden container row
+        # underneath, holding the checkable items directly, so the UI can
+        # skip showing any grouping level at all.
+        db.execute(
+            "INSERT INTO level1 (subject_id, name, sort_order) VALUES (?, '', 0)",
+            (subject_id,),
+        )
+        db.commit()
     new_row = db.execute(
         """SELECT s.*, c.name AS category_name FROM subjects s
            JOIN categories c ON s.category_id = c.id WHERE s.id = ?""",
-        (cur.lastrowid,),
+        (subject_id,),
     ).fetchone()
     d = row_to_dict(new_row)
-    d["progress"] = subject_progress(db, cur.lastrowid)
+    d["progress"] = subject_progress(db, subject_id)
     return jsonify(d), 201
 
 
@@ -501,11 +531,12 @@ def update_subject(subject_id):
 # ---------------------------------------------------------------------------
 def parse_bulk_text(text):
     """
-    Indentation is relative, not absolute — the least-indented lines
-    in the pasted text become Level1, anything indented more than that
-    becomes Level2 under the current Level1. This way it still works
-    even if every line in a paste carries the same incidental leading
-    whitespace (common when copying from PDFs/docs).
+    Indentation is relative, not absolute — the least-indented lines in the
+    pasted text become Level1, anything indented more than that becomes
+    Level2 under the current Level1. This still works even if every line in
+    a paste carries the same incidental leading whitespace (common when
+    copying from PDFs/docs), which used to make everything collapse under
+    a single Level1.
     """
     lines = [l for l in text.split("\n") if l.strip()]
     if not lines:
@@ -533,23 +564,65 @@ def parse_bulk_text(text):
     return structure
 
 
+def parse_bulk_text_flat(text):
+    """Every non-blank line becomes one checkable item — used for flat
+    (single-level, no grouping) subjects."""
+    return [l.strip() for l in text.split("\n") if l.strip()]
+
+
 @app.route("/api/subjects/<int:subject_id>/bulk_preview", methods=["POST"])
 def bulk_preview(subject_id):
-    if not owns_subject(get_db(), subject_id, current_user_id()):
+    db = get_db()
+    subject = db.execute(
+        "SELECT is_flat FROM subjects WHERE id = ? AND user_id = ?",
+        (subject_id, current_user_id()),
+    ).fetchone()
+    if not subject:
         return jsonify({"error": "Subject not found"}), 404
     data = request.get_json(force=True)
     text = data.get("text", "")
-    parsed = parse_bulk_text(text)
+    if subject["is_flat"]:
+        parsed = [{"name": n, "level2_items": []} for n in parse_bulk_text_flat(text)]
+    else:
+        parsed = parse_bulk_text(text)
     return jsonify({"parsed": parsed})
 
 
 @app.route("/api/subjects/<int:subject_id>/bulk_import", methods=["POST"])
 def bulk_import(subject_id):
     db = get_db()
-    if not owns_subject(db, subject_id, current_user_id()):
+    subject = db.execute(
+        "SELECT is_flat FROM subjects WHERE id = ? AND user_id = ?",
+        (subject_id, current_user_id()),
+    ).fetchone()
+    if not subject:
         return jsonify({"error": "Subject not found"}), 404
     data = request.get_json(force=True)
     text = data.get("text", "")
+
+    if subject["is_flat"]:
+        items = parse_bulk_text_flat(text)
+        l1_row = db.execute(
+            "SELECT id FROM level1 WHERE subject_id = ? ORDER BY id LIMIT 1", (subject_id,)
+        ).fetchone()
+        if l1_row:
+            l1_id = l1_row["id"]
+        else:
+            cur = db.execute(
+                "INSERT INTO level1 (subject_id, name, sort_order) VALUES (?, '', 0)",
+                (subject_id,),
+            )
+            l1_id = cur.lastrowid
+        max_order_row = db.execute(
+            "SELECT MAX(sort_order) AS m FROM level2 WHERE level1_id = ?", (l1_id,)
+        ).fetchone()
+        order = (max_order_row["m"] or 0) + 1
+        l2_rows = [(l1_id, name, order + i) for i, name in enumerate(items)]
+        if l2_rows:
+            db_compat.insert_many(db, "level2", ("level1_id", "name", "sort_order"), l2_rows)
+        db.commit()
+        return jsonify({"ok": True, "level1_count": 1, "level2_count": len(items)})
+
     parsed = parse_bulk_text(text)
 
     max_order_row = db.execute(
