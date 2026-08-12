@@ -214,7 +214,12 @@
       <button class="btn-link" id="btn-new-category-toggle" type="button">+ New category</button>
       <input type="text" id="input-new-category" placeholder="e.g. Career" class="input" style="display:none; margin-top:8px;">
 
-      <div class="field-row">
+      <label class="field-label" style="display:flex; align-items:center; gap:8px; margin-top:14px; cursor:pointer;">
+        <input type="checkbox" id="input-is-flat" style="width:auto;">
+        <span>Flat checklist (no grouping — just checkboxes)</span>
+      </label>
+
+      <div id="level-labels-row" class="field-row">
         <div>
           <label class="field-label">Level 1 label</label>
           <input type="text" id="input-level1-label" placeholder="Milestone, Chapter, Unit..." class="input" value="Milestone">
@@ -225,6 +230,12 @@
           <input type="text" id="input-level2-label" placeholder="Module, Topic, Lesson..." class="input" value="Module">
           <p class="field-hint">What do you call items you check off?</p>
         </div>
+      </div>
+
+      <div id="flat-label-row" style="display:none;">
+        <label class="field-label">Item label</label>
+        <input type="text" id="input-flat-label" placeholder="Chapter, Task, Topic..." class="input" value="Chapter">
+        <p class="field-hint">What do you call the checklist items?</p>
       </div>
 
       <button class="btn btn-primary btn-block" id="btn-submit-subject">Create subject</button>
